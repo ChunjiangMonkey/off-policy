@@ -7,13 +7,25 @@ from offpolicy.algorithms.base.trainer import Trainer
 from offpolicy.utils.popart import PopArt
 import numpy as np
 
+
 class QMix(Trainer):
     def __init__(self, args, num_agents, policies, policy_mapping_fn, device=torch.device("cuda:0"), episode_length=None, vdn=False):
+        """ Qmix 训练类, 包装了DNQ算法的训练流程
+
+        Args:
+            args:
+            num_agents:
+            policies:
+            policy_mapping_fn:
+            device:
+            episode_length:
+            vdn:
         """
-        Trainer class for recurrent QMix/VDN. See parent class for more information.
-        :param episode_length: (int) maximum length of an episode.
-        :param vdnl: (bool) whether the algorithm being used is VDN.
-        """
+        # """
+        # Trainer class for recurrent QMix/VDN. See parent class for more information.
+        # :param episode_length: (int) maximum length of an episode.
+        # :param vdnl: (bool) whether the algorithm being used is VDN.
+        # """
         self.args = args
         self.use_popart = self.args.use_popart
         self.use_value_active_masks = self.args.use_value_active_masks
@@ -75,13 +87,22 @@ class QMix(Trainer):
             print("double Q learning will be used")
 
     def train_policy_on_batch(self, batch, update_policy_id=None):
+        """
+        为算法中单智能体和多智能体的部分训练策略
+        Args:
+            batch:
+            update_policy_id:
+
+        Returns:
+
+        """
         """See parent class."""
         # unpack the batch
         obs_batch, cent_obs_batch, \
-        act_batch, rew_batch, \
-        dones_batch, dones_env_batch, \
-        avail_act_batch, \
-        importance_weights, idxes = batch
+            act_batch, rew_batch, \
+            dones_batch, dones_env_batch, \
+            avail_act_batch, \
+            importance_weights, idxes = batch
 
         if self.use_same_share_obs:
             cent_obs_batch = to_torch(cent_obs_batch[self.policy_ids[0]])
@@ -125,7 +146,7 @@ class QMix(Trainer):
 
             # sequence of q values for all possible actions
             pol_all_q_seq, _ = policy.get_q_values(stacked_obs_batch, pol_prev_act_buffer_seq,
-                                                                            policy.init_hidden(-1, total_batch_size))
+                                                   policy.init_hidden(-1, total_batch_size))
             # get only the q values corresponding to actions taken in action_batch. Ignore the last time dimension.
             if policy.multidiscrete:
                 pol_all_q_curr_seq = [q_seq[:-1] for q_seq in pol_all_q_seq]
@@ -139,7 +160,8 @@ class QMix(Trainer):
                 if self.args.use_double_q:
                     # choose greedy actions from live, but get corresponding q values from target
                     greedy_actions, _ = policy.actions_from_q(pol_all_q_seq, available_actions=stacked_avail_act_batch)
-                    target_q_seq, _ = target_policy.get_q_values(stacked_obs_batch, pol_prev_act_buffer_seq, target_policy.init_hidden(-1, total_batch_size), action_batch=greedy_actions)
+                    target_q_seq, _ = target_policy.get_q_values(stacked_obs_batch, pol_prev_act_buffer_seq, target_policy.init_hidden(-1, total_batch_size),
+                                                                 action_batch=greedy_actions)
                 else:
                     _, _, target_q_seq = target_policy.get_actions(stacked_obs_batch, pol_prev_act_buffer_seq, target_policy.init_hidden(-1, total_batch_size))
             # don't need the first Q values for next step
@@ -198,7 +220,6 @@ class QMix(Trainer):
         train_info['Q_tot'] = (Q_tot_seq * (1 - bad_transitions_mask)).mean()
 
         return train_info, new_priorities, idxes
-
 
     def hard_target_updates(self):
         """Hard update the target networks."""

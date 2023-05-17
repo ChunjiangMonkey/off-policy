@@ -5,14 +5,30 @@ from offpolicy.algorithms.utils.mlp import MLPBase
 from offpolicy.algorithms.utils.rnn import RNNBase
 from offpolicy.algorithms.utils.act import ACTLayer
 
+
 class AgentQFunction(nn.Module):
+    """ 单agent的RNN Q网络
+
+    Attributes:
+        _use_orthogonal: RNN网络是否使用正交初始化
+        hidden_size:
+        _use_rnn_layer:
+        _gain:
+        device:
+        tpdv:
+        rnn:
+        mlp:
+        q:
+
     """
-    Individual agent q network (RNN).
-    :param args: (namespace) contains information about hyperparameters and algorithm configuration
-    :param input_dim: (int) dimension of input to q network
-    :param act_dim: (int) dimension of the action space
-    :param device: (torch.Device) torch device on which to do computations
-    """
+
+    # """
+    # Individual agent q network (RNN).
+    # :param args: (namespace) contains information about hyperparameters and algorithm configuration
+    # :param input_dim: (int) dimension of input to q network
+    # :param act_dim: (int) dimension of the action space
+    # :param device: (torch.Device) torch device on which to do computations
+    # """
     def __init__(self, args, input_dim, act_dim, device):
         super(AgentQFunction, self).__init__()
         self._use_orthogonal = args.use_orthogonal
@@ -33,20 +49,33 @@ class AgentQFunction(nn.Module):
 
     def forward(self, obs, rnn_states):
         """
-        Compute q values for every action given observations and rnn states.
-        :param obs: (torch.Tensor) observations from which to compute q values.
-        :param rnn_states: (torch.Tensor) rnn states with which to compute q values.
 
-        :return q_outs: (torch.Tensor) q values for every action
-        :return h_final: (torch.Tensor) new rnn states
+        Args:
+            obs: (torch.Tensor), agent的观测
+            rnn_states: (torch.Tensor), RNN的state, 即该agent上一个回合的动作, 见论文\mu的定义
+
+        Returns:
+            q_outs: obs的q值(准确地说是基于已有信息下rnn_states的obs的q值)
+            h_final: 新的隐层信息, 并不是policy产生的, 而是policy中的RNN产生的
+
         """
+        # """
+        # Compute q values for every action given observations and rnn states.
+        # :param obs: (torch.Tensor) observations from which to compute q values.
+        # :param rnn_states: (torch.Tensor) rnn states with which to compute q values.
+        #
+        # :return q_outs: (torch.Tensor) q values for every action
+        # :return h_final: (torch.Tensor) new rnn states
+        # """
         obs = to_torch(obs).to(**self.tpdv)
         rnn_states = to_torch(rnn_states).to(**self.tpdv)
 
+        # 下面的代码考虑了输入是否为序列以兼容mlp和rnn设置
         no_sequence = False
         if len(obs.shape) == 2:
             # this means we're just getting one output (no sequence)
             no_sequence = True
+            # 增加一维
             obs = obs[None]
             # obs is now of shape (seq_len, batch_size, obs_dim)
         if len(rnn_states.shape) == 2:
@@ -55,8 +84,8 @@ class AgentQFunction(nn.Module):
 
         inp = obs
 
-        if self._use_rnn_layer: 
-            rnn_outs, h_final = self.rnn(inp, rnn_states) 
+        if self._use_rnn_layer:
+            rnn_outs, h_final = self.rnn(inp, rnn_states)
         else:
             rnn_outs = self.mlp(inp)
             h_final = rnn_states[0, :, :]

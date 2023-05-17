@@ -7,6 +7,26 @@ from offpolicy.utils.util import get_dim_from_space, is_discrete, is_multidiscre
 
 
 class QMixPolicy(RecurrentPolicy):
+    """ 使用Qmix算法生成的单个agent的policy
+
+    Attributes:
+        args: 算法的超参数
+        device: 设备
+        obs_space: 观测空间, 包含形状、格式等内容
+        act_space: 动作空间, 包含形状、格式等内容
+        obs_dim: 观测维度
+        act_dim: 动作维度
+        output_dim: 输出维度, 即动作维度的总和
+        hidden_size: 隐层形状
+        central_obs_dim: 中心观测维度
+        discrete: 是否为discrete动作
+        multidiscrete: 是否为multi discrete动作
+        q_network_input_dim: agent q网络的输入维度
+        q_network: 算法的q网络
+        exploration: 一个探索率管理器
+
+    """
+
     def __init__(self, config, policy_config, train=True):
         """
         QMIX/VDN Policy Class to compute Q-values and actions. See parent class for details.
@@ -37,18 +57,29 @@ class QMixPolicy(RecurrentPolicy):
 
         if train:
             self.exploration = DecayThenFlatSchedule(self.args.epsilon_start, self.args.epsilon_finish, self.args.epsilon_anneal_time,
-                                                  decay="linear")
+                                                     decay="linear")
 
     def get_q_values(self, obs_batch, prev_action_batch, rnn_states, action_batch=None):
         """
-        Computes q values using the given information.
-        :param obs: (np.ndarray) agent observations from which to compute q values
-        :param prev_actions: (np.ndarray) agent previous actions which are optionally an input to q network
-        :param rnn_states: (np.ndarray) RNN states of q network
-        :param action_batch: (np.ndarray) if not None, then only return the q values corresponding to actions in action_batch
-        :return q_values: (torch.Tensor) computed q values
-        :return new_rnn_states: (torch.Tensor) updated RNN states
+        根据观测返回所有动作q值
+        Args:
+            obs_batch: 观测
+            prev_action_batch:
+            rnn_states:
+            action_batch:
+
+        Returns:
+
         """
+        # """
+        # Computes q values using the given information.
+        # :param obs: (np.ndarray) agent observations from which to compute q values
+        # :param prev_actions: (np.ndarray) agent previous actions which are optionally an input to q network
+        # :param rnn_states: (np.ndarray) RNN states of q network
+        # :param action_batch: (np.ndarray) if not None, then only return the q values corresponding to actions in action_batch
+        # :return q_values: (torch.Tensor) computed q values
+        # :return new_rnn_states: (torch.Tensor) updated RNN states
+        # """
 
         # combine previous action with observation for input into q, if specified in args
         if self.args.prev_act_inp:
@@ -68,11 +99,21 @@ class QMixPolicy(RecurrentPolicy):
 
     def q_values_from_actions(self, q_batch, action_batch):
         """
-        Get q values corresponding to actions.
-        :param q_batch: (torch.Tensor) q values corresponding to every action.
-        :param action_batch: (torch.Tensor) actions taken by the agent.
-        :return q_values: (torch.Tensor) q values in q_batch corresponding to actions in action_batch
+        输入action,得到特定的q值, 不通过网络
+
+        Args:
+            q_batch:
+            action_batch:
+
+        Returns:
+
         """
+        # """
+        # Get q values corresponding to actions.
+        # :param q_batch: (torch.Tensor) q values corresponding to every action.
+        # :param action_batch: (torch.Tensor) actions taken by the agent.
+        # :return q_values: (torch.Tensor) q values in q_batch corresponding to actions in action_batch
+        # """
         if self.multidiscrete:
             ind = 0
             all_q_values = []
@@ -93,22 +134,50 @@ class QMixPolicy(RecurrentPolicy):
         return q_values
 
     def get_actions(self, obs, prev_actions, rnn_states, available_actions=None, t_env=None, explore=False):
-        """See parent class."""
+        """
+        根据观测返回动作, 即决策过程. 调用了策略函数
+        Args:
+            obs:
+            prev_actions:
+            rnn_states:
+            available_actions:
+            t_env:
+            explore:
+
+        Returns:
+
+        """
+
+        # """See parent class."""
+
         q_values_out, new_rnn_states = self.get_q_values(obs, prev_actions, rnn_states)
         onehot_actions, greedy_Qs = self.actions_from_q(q_values_out, available_actions=available_actions, explore=explore, t_env=t_env)
-        
+
         return onehot_actions, new_rnn_states, greedy_Qs
 
     def actions_from_q(self, q_values, available_actions=None, explore=False, t_env=None):
         """
-        Computes actions to take given q values.
-        :param q_values: (torch.Tensor) agent observations from which to compute q values
-        :param available_actions: (np.ndarray) actions available to take (None if all actions available)
-        :param explore: (bool) whether to use eps-greedy exploration
-        :param t_env: (int) env step at which this function was called; used to compute eps for eps-greedy
-        :return onehot_actions: (np.ndarray) actions to take (onehot)
-        :return greedy_Qs: (torch.Tensor) q values corresponding to greedy actions.
+        根据q值, 返回动作
+        探索过程包含在这个函数里
+
+        Args:
+            q_values:
+            available_actions:
+            explore:
+            t_env:
+
+        Returns:
+
         """
+        # """
+        # Computes actions to take given q values.
+        # :param q_values: (torch.Tensor) agent observations from which to compute q values
+        # :param available_actions: (np.ndarray) actions available to take (None if all actions available)
+        # :param explore: (bool) whether to use eps-greedy exploration
+        # :param t_env: (int) env step at which this function was called; used to compute eps for eps-greedy
+        # :return onehot_actions: (np.ndarray) actions to take (onehot)
+        # :return greedy_Qs: (torch.Tensor) q values corresponding to greedy actions.
+        # """
         if self.multidiscrete:
             no_sequence = len(q_values[0].shape) == 2
             batch_size = q_values[0].shape[0] if no_sequence else q_values[0].shape[1]
@@ -174,12 +243,21 @@ class QMixPolicy(RecurrentPolicy):
         return onehot_actions, greedy_Qs
 
     def get_random_actions(self, obs, available_actions=None):
-        """See parent class."""
+        """
+        获取随机动作
+        Args:
+            obs:
+            available_actions:
+
+        Returns:
+
+        """
+        # """See parent class."""
         batch_size = obs.shape[0]
 
         if self.multidiscrete:
             random_actions = [OneHotCategorical(logits=torch.ones(batch_size, self.act_dim[i])).sample().numpy() for i in
-                                range(len(self.act_dim))]
+                              range(len(self.act_dim))]
             random_actions = np.concatenate(random_actions, axis=-1)
         else:
             if available_actions is not None:
@@ -187,7 +265,7 @@ class QMixPolicy(RecurrentPolicy):
                 random_actions = OneHotCategorical(logits=logits).sample().numpy()
             else:
                 random_actions = OneHotCategorical(logits=torch.ones(batch_size, self.act_dim)).sample().numpy()
-        
+
         return random_actions
 
     def init_hidden(self, num_agents, batch_size):
@@ -198,9 +276,24 @@ class QMixPolicy(RecurrentPolicy):
             return torch.zeros(num_agents, batch_size, self.hidden_size)
 
     def parameters(self):
+        """
+        q网络的参数
+
+        Returns:
+
+        """
         """See parent class."""
         return self.q_network.parameters()
 
     def load_state(self, source_policy):
+        """
+        load 模型
+
+        Args:
+            source_policy:
+
+        Returns:
+
+        """
         """See parent class."""
         self.q_network.load_state_dict(source_policy.q_network.state_dict())
