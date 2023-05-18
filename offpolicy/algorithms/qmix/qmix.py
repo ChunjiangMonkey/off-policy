@@ -10,16 +10,16 @@ import numpy as np
 
 class QMix(Trainer):
     def __init__(self, args, num_agents, policies, policy_mapping_fn, device=torch.device("cuda:0"), episode_length=None, vdn=False):
-        """ Qmix 训练类, 包装了DNQ算法的训练流程
+        """ Qmix 训练类, 包装了DQN算法的训练流程
 
         Args:
-            args:
-            num_agents:
-            policies:
-            policy_mapping_fn:
-            device:
-            episode_length:
-            vdn:
+            args: 超参数
+            num_agents: agent的数量
+            policies: 策略
+            policy_mapping_fn: 策略映射
+            device: 设备
+            episode_length: episode长度
+            vdn: 是否为vdn算法
         """
         # """
         # Trainer class for recurrent QMix/VDN. See parent class for more information.
